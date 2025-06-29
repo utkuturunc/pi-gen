@@ -6,6 +6,7 @@ IMG_NAME="raspios_arm64"
 IMG_FAMILY="raspios"
 
 ENABLE_SSH=1
+SETFCAP=1
 
 WPA_COUNTRY=DE
 
