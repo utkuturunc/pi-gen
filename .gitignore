@@ -7,3 +7,4 @@ SKIP_IMAGES
 .pc
 *-pc
 stage2/05-custom/custom.conf
+.DS_Store

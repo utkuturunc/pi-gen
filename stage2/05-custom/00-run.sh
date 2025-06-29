@@ -16,6 +16,11 @@ on_chroot <<EOF
 curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
 EOF
 
+# Enable user_allow_other for FUSE
+on_chroot <<EOF
+echo "user_allow_other" >> /etc/fuse.conf
+EOF
+
 # Prepare script dirs and mount points
 mkdir -p "${ROOTFS_DIR}/home/${FIRST_USER_NAME}/scripts"
 mkdir -p "${ROOTFS_DIR}/mnt/usb"
@@ -42,7 +47,7 @@ for i in \$(seq 1 \$USB_RETRIES); do
     fi
 
     if DEVICE=\$(blkid -U "\$USB_UUID" 2>/dev/null); then
-        mount "\$DEVICE" "\$USB_MOUNT" && {
+        mount -o uid=${FIRST_USER_NAME},gid=${FIRST_USER_NAME},umask=022 "\$DEVICE" "\$USB_MOUNT" && {
             echo "[mount-usb] Mounted \$DEVICE successfully"
             exit 0
         }
@@ -74,7 +79,7 @@ for i in \$(seq 1 \$SFTP_RETRIES); do
         exit 0
     fi
 
-    sshfs_opts="-o reconnect -o ServerAliveInterval=15 -o ServerAliveCountMax=3  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o debug -o sshfs_debug"
+    sshfs_opts="-o uid=\$(id -u ${FIRST_USER_NAME}) -o gid=\$(id -g ${FIRST_USER_NAME}) -o umask=022 -o allow_other -o reconnect -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -f"
 
     sshpass -p "\$SFTP_PASS" sshfs "\$SFTP_USER@\$SFTP_HOST:\$SFTP_REMOTE_PATH" "\$SFTP_MOUNT" \$sshfs_opts && {
         echo "[mount-sftp] Mounted successfully"
@@ -122,8 +127,8 @@ Wants=network-online.target
 
 [Service]
 ExecStart=/home/${FIRST_USER_NAME}/scripts/mount-sftp.sh
-Type=oneshot
-RemainAfterExit=true
+User=${FIRST_USER_NAME}
+Type=simple
 
 [Install]
 WantedBy=multi-user.target
