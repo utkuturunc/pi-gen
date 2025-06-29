@@ -1,0 +1,31 @@
+# Which stages to build
+STAGE_LIST="stage0 stage1 stage2"
+
+# Base image variant (64-bit Raspberry Pi OS)
+IMG_NAME="raspios_arm64"
+IMG_FAMILY="raspios"
+
+ENABLE_SSH=1
+
+WPA_COUNTRY=DE
+
+DISABLE_FIRST_BOOT_USER_RENAME=1
+
+FIRST_USER_NAME="utkuturunc"
+FIRST_USER_PASS="blabla"
+
+TIMEZONE_DEFAULT=Europe/Berlin
+
+TARGET_HOSTNAME=utkupi
+
+# SFTP credentials
+SFTP_USER="turutk"
+SFTP_PASS="bikbik"
+SFTP_HOST="bee.seedhost.eu"
+SFTP_REMOTE_PATH="/home8/turutk/"
+
+# USB volume UUID (find on macOS with `diskutil info` or Linux `blkid`)
+USB_UUID="53BC1C49-044F-3369-9BBC-E66FA85C7E9F"
+
+WPA_ESSID="Vodafone-D774"
+WPA_PASSWORD="dabadum"
