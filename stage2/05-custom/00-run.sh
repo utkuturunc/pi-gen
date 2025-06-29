@@ -65,8 +65,8 @@ SFTP_PASS="$SFTP_PASS"
 SFTP_HOST="$SFTP_HOST"
 SFTP_REMOTE_PATH="$SFTP_REMOTE_PATH"
 SFTP_MOUNT="/mnt/sftp"
-SFTP_RETRIES=3
-SFTP_DELAY=5
+SFTP_RETRIES=2
+SFTP_DELAY=300
 
 for i in \$(seq 1 \$SFTP_RETRIES); do
     if mountpoint -q "\$SFTP_MOUNT"; then
@@ -74,7 +74,7 @@ for i in \$(seq 1 \$SFTP_RETRIES); do
         exit 0
     fi
 
-    sshfs_opts="-o reconnect -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    sshfs_opts="-o reconnect -o ServerAliveInterval=15 -o ServerAliveCountMax=3  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o debug -o sshfs_debug"
 
     sshpass -p "\$SFTP_PASS" sshfs "\$SFTP_USER@\$SFTP_HOST:\$SFTP_REMOTE_PATH" "\$SFTP_MOUNT" \$sshfs_opts && {
         echo "[mount-sftp] Mounted successfully"
