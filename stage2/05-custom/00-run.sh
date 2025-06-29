@@ -2,11 +2,8 @@
 
 echo "Running stage 2 custom script"
 
-# Load config file
-source "${STAGE_DIR}/05-custom/custom.conf"
-
-# Disable first-boot user rename system
-rm -f /etc/xdg/autostart/piwiz.desktop
+echo "FIRST_USER_NAME: ${FIRST_USER_NAME}"
+echo "SFTP_USER: ${SFTP_USER}"
 
 # Install dependencies
 apt-get update
@@ -15,31 +12,11 @@ apt-get install -y sshfs sshpass udisks2 sudo
 # Install FileBrowser
 curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
 
-# --- Create or Rename User FIRST ---
-if id "$OS_USER" &>/dev/null; then
-  echo "User $OS_USER already exists"
-else
-  if id pi &>/dev/null; then
-    usermod -l "$OS_USER" -d /home/"$OS_USER" -m pi
-    groupmod -n "$OS_USER" pi
-  else
-    useradd -m -s /bin/bash "$OS_USER"
-  fi
-
-  echo "User $OS_USER created"
-fi
-
-echo "Setting password and sudo rights"
-
-# Set password and sudo rights
-echo "$OS_USER:$OS_PASS" | chpasswd
-usermod -aG sudo "$OS_USER"
-
 # Prepare script and config dirs
-mkdir -p /home/$OS_USER/scripts
+mkdir -p "${ROOTFS_DIR}/home/${FIRST_USER_NAME}/scripts"
 
 # Write mount config
-cat <<EOF >/home/$OS_USER/scripts/mount.conf
+cat <<EOF >"${ROOTFS_DIR}/home/${FIRST_USER_NAME}/scripts/mount.conf"
 SFTP_USER="$SFTP_USER"
 SFTP_PASS="$SFTP_PASS"
 SFTP_HOST="$SFTP_HOST"
@@ -55,9 +32,9 @@ USB_DELAY=5
 EOF
 
 # --- USB Mount Script ---
-cat <<'EOF' >/home/$OS_USER/scripts/mount-usb.sh
+cat <<EOF >${ROOTFS_DIR}/home/$FIRST_USER_NAME/scripts/mount-usb.sh
 #!/bin/bash
-source /home/$OS_USER/scripts/mount.conf
+source /home/$FIRST_USER_NAME/scripts/mount.conf
 
 mkdir -p "$USB_MOUNT"
 
@@ -83,9 +60,9 @@ exit 1
 EOF
 
 # --- SFTP Mount Script ---
-cat <<'EOF' >/home/$OS_USER/scripts/mount-sftp.sh
+cat <<EOF >"${ROOTFS_DIR}/home/${FIRST_USER_NAME}/scripts/mount-sftp.sh"
 #!/bin/bash
-source /home/$OS_USER/scripts/mount.conf
+source /home/$FIRST_USER_NAME/scripts/mount.conf
 
 mkdir -p "$SFTP_MOUNT"
 
@@ -111,8 +88,11 @@ exit 1
 EOF
 
 # Permissions
-chmod +x /home/$OS_USER/scripts/*.sh
-chown -R $OS_USER:$OS_USER /home/$OS_USER/scripts
+on_chroot <<EOF
+chmod +x "/home/${FIRST_USER_NAME}/scripts/mount-usb.sh"
+chmod +x "/home/${FIRST_USER_NAME}/scripts/mount-sftp.sh"
+chown -R "${FIRST_USER_NAME}:${FIRST_USER_NAME}" "/home/${FIRST_USER_NAME}/scripts"
+EOF
 
 # --- Systemd Services ---
 
@@ -123,10 +103,10 @@ Description=Mount USB if present
 After=local-fs.target
 
 [Service]
-ExecStart=/home/$OS_USER/scripts/mount-usb.sh
+ExecStart=/home/$FIRST_USER_NAME/scripts/mount-usb.sh
 Type=oneshot
 RemainAfterExit=true
-User=$OS_USER
+User=$FIRST_USER_NAME
 
 [Install]
 WantedBy=multi-user.target
@@ -140,37 +120,13 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/home/$OS_USER/scripts/mount-sftp.sh
+ExecStart=/home/$FIRST_USER_NAME/scripts/mount-sftp.sh
 Type=oneshot
 RemainAfterExit=true
-User=$OS_USER
+User=$FIRST_USER_NAME
 
 [Install]
 WantedBy=multi-user.target
-EOF
-
-# --- Wi-Fi Configuration ---
-mkdir -p /etc/wpa_supplicant
-cat <<EOF >/etc/wpa_supplicant/wpa_supplicant.conf
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=DE
-
-network={
-  ssid="$WIFI_SSID"
-  psk="$WIFI_PASS"
-  key_mgmt=WPA-PSK
-}
-EOF
-
-chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
-
-# --- Set Hostname ---
-echo "${HOSTNAME}" >"${ROOTFS_DIR}/etc/hostname"
-echo "127.0.1.1		${HOSTNAME}" >>"${ROOTFS_DIR}/etc/hosts"
-
-on_chroot <<EOF
-	SUDO_USER="${OS_USER}" raspi-config nonint do_net_names 1
 EOF
 
 # --- FileBrowser systemd service ---
@@ -181,15 +137,11 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/filebrowser -r /mnt -a 0.0.0.0 --port 8080
-User=$OS_USER
+User=$FIRST_USER_NAME
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
-EOF
-
-on_chroot <<EOF
-systemctl enable ssh
 EOF
 
 systemctl enable mount-usb.service

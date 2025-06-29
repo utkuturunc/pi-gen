@@ -1,14 +1,13 @@
 #!/bin/bash -e
 
 # shellcheck disable=SC2119
-run_sub_stage()
-{
+run_sub_stage() {
 	log "Begin ${SUB_STAGE_DIR}"
-	pushd "${SUB_STAGE_DIR}" > /dev/null
+	pushd "${SUB_STAGE_DIR}" >/dev/null
 	for i in {00..99}; do
 		if [ -f "${i}-debconf" ]; then
 			log "Begin ${SUB_STAGE_DIR}/${i}-debconf"
-			on_chroot << EOF
+			on_chroot <<EOF
 debconf-set-selections <<SELEOF
 $(cat "${i}-debconf")
 SELEOF
@@ -18,9 +17,9 @@ EOF
 		fi
 		if [ -f "${i}-packages-nr" ]; then
 			log "Begin ${SUB_STAGE_DIR}/${i}-packages-nr"
-			PACKAGES="$(sed -f "${SCRIPT_DIR}/remove-comments.sed" < "${i}-packages-nr")"
+			PACKAGES="$(sed -f "${SCRIPT_DIR}/remove-comments.sed" <"${i}-packages-nr")"
 			if [ -n "$PACKAGES" ]; then
-				on_chroot << EOF
+				on_chroot <<EOF
 apt-get -o Acquire::Retries=3 install --no-install-recommends -y $PACKAGES
 EOF
 			fi
@@ -28,9 +27,9 @@ EOF
 		fi
 		if [ -f "${i}-packages" ]; then
 			log "Begin ${SUB_STAGE_DIR}/${i}-packages"
-			PACKAGES="$(sed -f "${SCRIPT_DIR}/remove-comments.sed" < "${i}-packages")"
+			PACKAGES="$(sed -f "${SCRIPT_DIR}/remove-comments.sed" <"${i}-packages")"
 			if [ -n "$PACKAGES" ]; then
-				on_chroot << EOF
+				on_chroot <<EOF
 apt-get -o Acquire::Retries=3 install -y $PACKAGES
 EOF
 			fi
@@ -38,7 +37,7 @@ EOF
 		fi
 		if [ -d "${i}-patches" ]; then
 			log "Begin ${SUB_STAGE_DIR}/${i}-patches"
-			pushd "${STAGE_WORK_DIR}" > /dev/null
+			pushd "${STAGE_WORK_DIR}" >/dev/null
 			if [ "${CLEAN}" = "1" ]; then
 				rm -rf .pc
 				rm -rf ./*-pc
@@ -55,13 +54,12 @@ EOF
 			RC=0
 			quilt push -a || RC=$?
 			case "$RC" in
-				0|2)
-					;;
-				*)
-					false
-					;;
+			0 | 2) ;;
+			*)
+				false
+				;;
 			esac
-			popd > /dev/null
+			popd >/dev/null
 			log "End ${SUB_STAGE_DIR}/${i}-patches"
 		fi
 		if [ -x ${i}-run.sh ]; then
@@ -71,20 +69,19 @@ EOF
 		fi
 		if [ -f ${i}-run-chroot.sh ]; then
 			log "Begin ${SUB_STAGE_DIR}/${i}-run-chroot.sh"
-			on_chroot < ${i}-run-chroot.sh
+			on_chroot <${i}-run-chroot.sh
 			log "End ${SUB_STAGE_DIR}/${i}-run-chroot.sh"
 		fi
 	done
-	popd > /dev/null
+	popd >/dev/null
 	log "End ${SUB_STAGE_DIR}"
 }
 
-
-run_stage(){
+run_stage() {
 	log "Begin ${STAGE_DIR}"
 	STAGE="$(basename "${STAGE_DIR}")"
 
-	pushd "${STAGE_DIR}" > /dev/null
+	pushd "${STAGE_DIR}" >/dev/null
 
 	STAGE_WORK_DIR="${WORK_DIR}/${STAGE}"
 	ROOTFS_DIR="${STAGE_WORK_DIR}"/rootfs
@@ -119,7 +116,7 @@ run_stage(){
 	PREV_STAGE="${STAGE}"
 	PREV_STAGE_DIR="${STAGE_DIR}"
 	PREV_ROOTFS_DIR="${ROOTFS_DIR}"
-	popd > /dev/null
+	popd >/dev/null
 	log "End ${STAGE_DIR}"
 }
 
@@ -158,16 +155,14 @@ if [ -f config ]; then
 	source config
 fi
 
-while getopts "c:" flag
-do
+while getopts "c:" flag; do
 	case "$flag" in
-		c)
-			EXTRA_CONFIG="$OPTARG"
-			# shellcheck disable=SC1090
-			source "$EXTRA_CONFIG"
-			;;
-		*)
-			;;
+	c)
+		EXTRA_CONFIG="$OPTARG"
+		# shellcheck disable=SC1090
+		source "$EXTRA_CONFIG"
+		;;
+	*) ;;
 	esac
 done
 
@@ -208,6 +203,14 @@ export DISABLE_FIRST_BOOT_USER_RENAME=${DISABLE_FIRST_BOOT_USER_RENAME:-0}
 export WPA_COUNTRY
 export ENABLE_SSH="${ENABLE_SSH:-0}"
 export PUBKEY_ONLY_SSH="${PUBKEY_ONLY_SSH:-0}"
+
+export SFTP_USER
+export SFTP_PASS
+export SFTP_HOST
+export SFTP_REMOTE_PATH
+export USB_UUID
+export WPA_ESSID
+export WPA_PASSWORD
 
 export LOCALE_DEFAULT="${LOCALE_DEFAULT:-en_GB.UTF-8}"
 
@@ -256,7 +259,6 @@ trap term EXIT INT TERM
 
 dependencies_check "${BASE_DIR}/depends"
 
-
 PAGESIZE=$(getconf PAGESIZE)
 if [ "$ARCH" == "armhf" ] && [ "$PAGESIZE" != "4096" ]; then
 	echo
@@ -295,12 +297,12 @@ if [[ "$DISABLE_FIRST_BOOT_USER_RENAME" == "1" ]]; then
 	echo "Be advised of the security risks linked to shipping a device with default username/password set."
 fi
 
-if [[ -n "${APT_PROXY}" ]] && ! curl --silent "${APT_PROXY}" >/dev/null ; then
+if [[ -n "${APT_PROXY}" ]] && ! curl --silent "${APT_PROXY}" >/dev/null; then
 	echo "Could not reach APT_PROXY server: ${APT_PROXY}"
 	exit 1
 fi
 
-if [[ -n "${WPA_PASSWORD}" && ${#WPA_PASSWORD} -lt 8 || ${#WPA_PASSWORD} -gt 63  ]] ; then
+if [[ -n "${WPA_PASSWORD}" && ${#WPA_PASSWORD} -lt 8 || ${#WPA_PASSWORD} -gt 63 ]]; then
 	echo "WPA_PASSWORD" must be between 8 and 63 characters
 	exit 1
 fi
