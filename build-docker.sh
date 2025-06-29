@@ -131,7 +131,7 @@ if [[ "${binfmt_misc_required}" == "1" ]]; then
 fi
 
 trap 'echo "got CTRL+C... please wait 5s" && ${DOCKER} stop -t 5 ${DOCKER_CMDLINE_NAME}' SIGINT SIGTERM
-time ${DOCKER} run \
+time ${DOCKER} run --privileged \
   $DOCKER_CMDLINE_PRE \
   --name "${DOCKER_CMDLINE_NAME}" \
   --privileged \
